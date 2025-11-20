@@ -1,0 +1,20 @@
+{
+  "name": "@proposals/error-limit-option",
+  "version": "0.0.0",
+  "description": "Polyfill and playground for the ECMAScript Error option `limit` (per-error stack depth override)",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "keywords": ["ecmascript", "proposal", "error", "stack", "limit", "stackTraceLimit", "per-error", "override"],
+  "author": "Ruben Bridgewater <ruben@bridgewater.de>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npx ecmarkup spec.emu index.html",
+    "build:strict": "npx ecmarkup --strict spec.emu index.html"
+  }
+}

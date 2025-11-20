@@ -1,0 +1,149 @@
+<!doctype html>
+<meta charset="utf8">
+<link rel="stylesheet" href="./spec.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
+<script src="./spec.js"></script>
+<pre class="metadata">
+title: Error option `limit`
+stage: 1
+contributors: Ruben Bridgewater
+</pre>
+
+<emu-intro id="sec-intro">
+  <h1>Introduction</h1>
+  <p>
+    This proposal introduces a new option, <code>limit</code>, recognized by ECMAScript
+    <code>Error</code> constructors (and their built-in subclasses) that accept an options argument.
+    The option specifies the maximum number of stack frames to capture for that specific error instance.
+    When provided, the local <code>limit</code> overrides any global/default stack trace limit that the
+    implementation might apply.
+  </p>
+  <emu-note>
+    <p>
+      In many hosts, developers simulate this behavior by temporarily changing a global stack trace limit
+      (for example, <code>Error.stackTraceLimit</code>) before creating an error and restoring it after.
+      This proposal standardizes a language-level, per-error option with interoperable semantics and no
+      global side effects.
+    </p>
+  </emu-note>
+</emu-intro>
+
+<emu-clause id="sec-internal-slots">
+  <h1>Internal Slots</h1>
+  <p>
+    Each <code>Error</code> instance is extended with the following internal slot in addition to those already present:
+  </p>
+  <ul>
+    <li>
+      <dfn>[[StackTraceLimitOverride]]</dfn> (default value: <emu-val>undefined</emu-val>) —
+      either <emu-val>undefined</emu-val> or a non-negative integer (including <emu-val>+∞</emu-val> as produced by
+      <emu-xref href="https://tc39.es/ecma262/#sec-tointegerorinfinity">ToIntegerOrInfinity</emu-xref>).
+      When a stack trace is captured for the error, if this slot is not <emu-val>undefined</emu-val>, its value is used
+      as the stack length limit for that capture instead of any host default/global limit.
+    </li>
+  </ul>
+</emu-clause>
+
+<emu-clause id="sec-installlimit" aoid="InstallLimit">
+  <h1>InstallLimit ( <var>E</var>, <var>options</var> )</h1>
+  <p>
+    The abstract operation InstallLimit performs validation of the <code>limit</code> option
+    and records it on the <code>Error</code> instance.
+  </p>
+  <emu-alg>
+    1. If <var>options</var> is <emu-val>undefined</emu-val>, return.
+    2. Let <var>limit</var> be the value of <var>options</var>'s <code>"limit"</code> property if it exists; otherwise <emu-val>undefined</emu-val>.
+    3. If <var>limit</var> is <emu-val>undefined</emu-val>, return.
+    4. Let <var>n</var> be ? <emu-xref href="https://tc39.es/ecma262/#sec-tointegerorinfinity">ToIntegerOrInfinity</emu-xref>(<var>limit</var>).
+    5. If <var>n</var> &lt; 0, throw a RangeError exception.
+    6. Set <var>E</var>.[[StackTraceLimitOverride]] to <var>n</var>.
+    7. Return.
+  </emu-alg>
+  <emu-note>
+    <p>
+      The option is stored only on the specific error instance and has no global effect.
+    </p>
+  </emu-note>
+</emu-clause>
+
+<emu-clause id="sec-error-constructors-limit">
+  <h1>Changes to Error and Error Subclass Constructors</h1>
+  <p>
+    The <code>Error</code> constructor and each of the built-in error subclass constructors that accept an options argument
+    (<code>EvalError</code>, <code>RangeError</code>, <code>ReferenceError</code>, <code>SyntaxError</code>, <code>TypeError</code>, <code>URIError</code>,
+    and <code>AggregateError</code>) are modified to recognize <code>limit</code>.
+  </p>
+
+  <emu-clause id="sec-error-constructor-mod">
+    <h1>The Error Constructor</h1>
+    <p>
+      The built-in function <code>Error ( message [ , options ] )</code> is modified as follows:
+    </p>
+    <emu-alg>
+      1. Perform the steps as currently specified to create the <code>Error</code> instance <var>E</var>.
+      2. If <var>options</var> is not present, <emu-xref href="#sec-installlimit">InstallLimit</emu-xref> has no effect.
+      3. Otherwise, perform InstallLimit(<var>E</var>, <var>options</var>).
+      4. Return <var>E</var>.
+    </emu-alg>
+  </emu-clause>
+
+  <emu-clause id="sec-error-subclass-constructors-mod">
+    <h1>Built-in Error Subclass Constructors</h1>
+    <p>
+      For each of the built-in error subclass constructors that accept <var>options</var>:
+    </p>
+    <ul>
+      <li><code>EvalError ( message [ , options ] )</code></li>
+      <li><code>RangeError ( message [ , options ] )</code></li>
+      <li><code>ReferenceError ( message [ , options ] )</code></li>
+      <li><code>SyntaxError ( message [ , options ] )</code></li>
+      <li><code>TypeError ( message [ , options ] )</code></li>
+      <li><code>URIError ( message [ , options ] )</code></li>
+    </ul>
+    <p>
+      Insert, after the error instance is created and any other options are processed (such as <code>cause</code>), the step:
+      “Perform InstallLimit(<var>E</var>, <var>options</var>).”
+    </p>
+    <p>
+      For <code>AggregateError ( errors, message [ , options ] )</code>, insert the same step after the error instance is created and prior options (such as <code>cause</code>) are processed, using its <var>options</var> parameter.
+    </p>
+  </emu-clause>
+</emu-clause>
+
+<emu-clause id="sec-host-stack-limit-application">
+  <h1>Host Requirements for Stack Trace Limit Application</h1>
+  <p>
+    This section applies to hosts that provide a mechanism to capture and expose error stack traces (for example, via
+    a non-standard <code>stack</code> property or other diagnostics). Such hosts <em>must</em> integrate
+    <code>limit</code> as follows:
+  </p>
+  <emu-alg>
+    1. When capturing the stack for an <code>Error</code> instance <var>E</var>, let <var>S</var> be the sequence of frames that would otherwise be captured for <var>E</var>.
+    2. Let <var>n</var> be <var>E</var>.[[StackTraceLimitOverride]].
+    3. If <var>n</var> is <emu-val>undefined</emu-val>, apply the host-defined default/global stack trace length limit to <var>S</var>.
+    4. Otherwise, apply the limit <var>n</var> to <var>S</var>.
+    5. Format <var>S</var> as the host would ordinarily format a stack trace.
+  </emu-alg>
+  <emu-note>
+    <p>
+      This clause does not standardize how frames are formatted or how asynchronous/linked stacks are composed. It only
+      specifies limit selection and application for a single error capture.
+    </p>
+  </emu-note>
+</emu-clause>
+
+<emu-clause id="sec-examples" informative>
+  <h1>Examples</h1>
+  <emu-example>
+    <h1>Capturing only a few frames</h1>
+    <p>Only the first two frames are included for this error; other errors use the default/global limit.</p>
+<pre><code class="javascript">
+function a() { b(); }
+function b() { c(); }
+function c() { throw new Error('boom', { limit: 2 }); }
+a();
+</code></pre>
+  </emu-example>
+</emu-clause>
+
+
