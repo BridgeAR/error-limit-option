@@ -6,9 +6,7 @@ Champion: Ruben Bridgewater
 
 Author: Ruben Bridgewater <ruben@bridgewater.de>
 
-Stage: 0
-
-TODO: Define a stack frame is implementation defined.
+Stage: 1
 
 ## Overview
 
@@ -132,6 +130,8 @@ These demonstrate that developers already rely on per-error or context-local sta
   - Otherwise, apply `L` as the limit for this error only.
 - Formatting and any other host-defined stack processing are unchanged.
 
+A `stack frame` is implementation defined.
+
 ## Specification text (outline)
 
 1. In each `Error` (and subclass) constructor that accepts an options argument:
@@ -164,10 +164,6 @@ See the full spec draft:
 
 - Continue using global `Error.stackTraceLimit`. Rejected for lack of precision, surprising global side effects, and boilerplate required to simulate per-error control.
 - Add new host-specific APIs. Rejected; standardizing a language option is more portable and interoperable.
-
-## TC39 stages and champions
-
-- Ready for Stage 1
 
 ## Conclusion
 
